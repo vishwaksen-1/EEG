@@ -3,6 +3,7 @@ function process_eeg_data()
 %   This script prompts the user to select a data file, extracts processing
 %   parameters from the filename, and then segments, averages, and saves
 %   the results into a new folder.
+% Output is a new folder containing 4 files(one for each stim) with trial-averaged data of all channels-- 1664x14 double
 
 clc; % Clear the console for a clean run
 

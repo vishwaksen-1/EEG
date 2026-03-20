@@ -30,7 +30,7 @@ INITIAL_DELAY_MS = 592;
 delay_samples = round(INITIAL_DELAY_MS / 1000 * fs);
 
 % collect files using same fileGlobber regex as t_segmentAllEEG
-addpath('../..'); % adjust if needed
+addpath('..\Utils'); % adjust if needed
 file_ending_regex = '.*(?<!_marker|_cleaning_stats)\.mat$';
 files = fileGlobber(file_ending_regex, folder);
 
@@ -128,29 +128,30 @@ for s = 1:numSubjects
             has_response = ~isempty(markersInSegment);
 
             if ~has_response
+                % No marker inside this segment
                 if is_periodic
-                    % MISS
-                    result(s, stimID, tr).res = -1;
-                    result(s, stimID, tr).lag = -1;
+                    % Miss (should have responded) -> res = 0, lag = -1
+                    result(s, st, tr).res = 0;
+                    result(s, st, tr).lag = -1;
                 else
-                    % CORRECT REJECTION
-                    result(s, stimID, tr).res = 1;
-                    result(s, stimID, tr).lag = -1;
+                    % Correct rejection (no response expected) -> res = 1, lag = -1
+                    result(s, st, tr).res = 1;
+                    result(s, st, tr).lag = -1;
                 end
             else
-                % FIRST marker = response
+                % There is at least one marker in the segment. Use the first one.
                 firstMarkerIdx = markersInSegment(1);
                 lag_samples = firstMarkerIdx - segStartGlobal;
                 lag_sec = lag_samples / fs;
-            
+
                 if is_periodic
-                    % HIT
-                    result(s, stimID, tr).res = 1;
-                    result(s, stimID, tr).lag = lag_sec;
+                    % Hit (correct)
+                    result(s, st, tr).res = 1;
+                    result(s, st, tr).lag = lag_sec;
                 else
-                    % FALSE ALARM
-                    result(s, stimID, tr).res = 0;
-                    result(s, stimID, tr).lag = lag_sec;
+                    % False alarm (incorrect)
+                    result(s, st, tr).res = 0;
+                    result(s, st, tr).lag = lag_sec;
                 end
             end
 

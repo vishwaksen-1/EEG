@@ -1,6 +1,6 @@
 % bootstrap_plot_eachChannel_allVars_subplots_ms.m
 % One figure per channel
-% Each figure has subplots for stim1–4 × varNames (raw, subNorm, subNormByGlobalBaseline)
+% Each figure has subplots for stim1–4 × varNames (zscore, subNorm, subNormByGlobalBaseline)
 % Bootstrap mean ± 95% CI (filled area)
 % Time axis in milliseconds (fs = 256 Hz)
 
@@ -17,16 +17,17 @@ saveDir = 'ChannelFigs_AllVars_Subplots';
 channels = {'AF3','F7','F3','FC5','T7','P7','O1','O2','P8','T8','FC6','F4','F8','AF4'};
 
 stimNames = {'stim1','stim2','stim3','stim4'};
-varNames  = {'raw','subNorm','subTrialNorm'};
+% varNames  = {'zscore','subNorm','subTrialNorm'};
+varNames  = {'zscore','subNorm','subTrialNorm'};
 
 colors = lines(numel(stimNames));
 
 %% Checks
-if ~exist('actnorm_hitNcr','var') || ~exist('passnorm','var')
-    error('Please load actnorm_hitNcr and passnorm structs first.');
+if ~exist('actnorm_hitNCr','var') || ~exist('passnorm','var')
+    error('Please load actnorm_hitNCr and passnorm structs first.');
 end
-if ~isfield(actnorm_hitNcr,'Out12') || ~isfield(passnorm,'Out12') ...
-   || ~isfield(actnorm_hitNcr,'Out34') || ~isfield(passnorm,'Out34')
+if ~isfield(actnorm_hitNCr,'Out12') || ~isfield(passnorm,'Out12') ...
+   || ~isfield(actnorm_hitNCr,'Out34') || ~isfield(passnorm,'Out34')
     error('actnorm_faNmiss/passnorm missing Out12 or Out34 fields.');
 end
 
@@ -37,11 +38,11 @@ for s = 1:numel(stimNames)
         var  = varNames{v};
         if s <= 2
             % stim1 and stim2 from Out12
-            A = actnorm_hitNcr.Out12; P = passnorm.Out12;
+            A = actnorm_hitNCr.Out12; P = passnorm.Out12;
             stimField = stim;  % same name
         else
             % stim3, stim4 from Out34 but stored as stim1, stim2
-            A = actnorm_hitNcr.Out34; P = passnorm.Out34;
+            A = actnorm_hitNCr.Out34; P = passnorm.Out34;
             stimField = sprintf('stim%d', s-2); % map stim3->stim1, stim4->stim2
         end
         Diff.(stim).(var) = A.([stimField '_' var]) - P.([stimField '_' var]);
@@ -66,7 +67,7 @@ end
 fprintf('Running bootstrap (%d samples) for each channel, stim, and variable...\n', nBoot);
 
 nChan = numel(channels);
-[~,~,nt] = size(Diff.stim1.raw);
+[~,~,nt] = size(Diff.stim1.zscore);
 timeAxis = ((0:nt-1) / fs) * 1000;  % convert to ms
 
 if saveFigs && ~exist(saveDir,'dir')
@@ -76,38 +77,54 @@ end
 for c = 1:nChan
     fig = figure('Name',sprintf('Channel %s',channels{c}), ...
                  'Units','normalized','Position',[0.05 0.05 0.85 0.85]);
-    
+
     plotIndex = 0;
     for s = 1:numel(stimNames)
         for v = 1:numel(varNames)
             plotIndex = plotIndex + 1;
             subplot(numel(stimNames), numel(varNames), plotIndex)
             hold on
-            
+
             data = squeeze(Diff.(stimNames{s}).(varNames{v})(:,c,:)); % subj x time
             [m, lo, hi] = bootstrapOverSubjects(data, nBoot, alpha);
-            
+
             % Plot shaded CI
             fill([timeAxis fliplr(timeAxis)], [lo fliplr(hi)], ...
                 colors(s,:), 'FaceAlpha', 0.25, 'EdgeColor','none');
+
             plot(timeAxis, m, 'Color', colors(s,:), 'LineWidth', 1.5);
-            
+
+            % ---- significance detection ----
+            sigPos = lo > 0;   % CI entirely above zero
+            sigNeg = hi < 0;   % CI entirely below zero
+
+            % convert logical vectors to segments
+            ySig = min(lo) - 0.1*(max(hi)-min(lo)); % place significance line below plot
+
+            for t = 1:length(timeAxis)
+                if sigPos(t)
+                    plot(timeAxis(t), ySig, '.', 'Color', [1 0 0], 'MarkerSize', 10); % red
+                elseif sigNeg(t)
+                    plot(timeAxis(t), ySig, '.', 'Color', [0 0 1], 'MarkerSize', 10); % blue
+                end
+            end
+            % -------------------------------
+
             title(sprintf('%s – %s', stimNames{s}, varNames{v}), 'Interpreter','none');
             xlabel('Time (ms)');
             ylabel('Amplitude (a.u.)');
             grid on; box on;
             xlim([timeAxis(1) timeAxis(end)]);
             yline(0);
-            hold off
         end
     end
-    
+
     sgtitle(sprintf('Channel: %s — Bootstrap mean ± 95%% CI', channels{c}));
-    
+
     if saveFigs
         saveas(fig, fullfile(saveDir, sprintf('Channel_%s.png', channels{c})));
     end
-    
+
     fprintf('Showing channel %s (%d/%d). Press any key for next...\n', ...
         channels{c}, c, nChan);
     pause;

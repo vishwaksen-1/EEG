@@ -1,3 +1,4 @@
+%after subs removal -- replace '-1' with '0' in stim1, stim3
 % correct(1,1,1) = 0;
 % correct(2,1,1) = 0;
 % correct(4,1,1) = 0;
@@ -17,7 +18,7 @@
 % correct(22,3,5) = 0;
 % correct(10,3,8) = 0;
 
-%after subs removal
+%after subs removal -- replace '-1' with '0' in stim1, stim3
 % correct(1,1,1) = 0;
 % correct(12,3,1) = 0;
 

@@ -1,7 +1,7 @@
 Folders:
 	analysis:
 		Segmentation and other analysis files
-	
+
 	Cleaned:
 		Cleaned data .mat files reside here
 
@@ -10,25 +10,31 @@ Folders:
 		And in Set1, Set2 we have active and passive segregated
 
 Files:
+    batchProcessRestingState.m
+        EEG Raw data Cleaning Function for a folder containing resting state data
+
+    processRestingStateEEG.m
+        Used by batchProcessRestingState.m to clean resting state data
+
 	eeg_cleaning_pipeline_code.m
 		EEG Raw data Cleaning Code for single file.
 		(Can be used to try and tweak the main Cleaning algo)
 
 	eegCleaningPipeline.m
-		EEG Raw data Cleaning Function -- to use with a folder containing Raw 		Data.
-		Saves the cleaned data in a new folder inside (`Cleaned/*`) named 		with timestamp
-	
-	eegDataVisualizer.m
+		EEG Raw data Cleaning Function -- to use with a folder containing Raw Data.
+		Saves the cleaned data in a new folder inside (`Cleaned/*`) named with timestamp
+
+	eegDataVisualizerMark.m, eegDataVisualizerNoMark.m
 		To make an interactive plot of the EEG Data
 		Opens a GUI upon running
 		Accepts RAW .csv files and Cleaned/processed .mat files
-	
+        first one also shows eeg-device markers, second doesn't
+
 	fileGlobber.m
 		This lists the files in a folder based on a condition.
 		Used in various .m scripts in this folder
-	
+
 	partitionFiles.m
 		This can partition a list of files into two or more folders based on 		regex matching.
 		Currently separates 'active' and 'passive'
-	
-	
+

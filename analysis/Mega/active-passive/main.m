@@ -18,7 +18,7 @@ channels = {'AF3','F7','F3','FC5','T7','P7','O1','O2','P8','T8','FC6','F4','F8',
 
 stimNames = {'stim1','stim2','stim3','stim4'};
 %varNames  = {'raw','subNorm','subTrialNorm'};
-varNames  = {'raw','subTrialNorm'};
+varNames  = {'zscore','subNorm','subTrialNorm'};
 
 colors = lines(numel(stimNames));
 
@@ -67,7 +67,7 @@ end
 fprintf('Running bootstrap (%d samples) for each channel, stim, and variable...\n', nBoot);
 
 nChan = numel(channels);
-[~,~,nt] = size(Diff.stim1.raw);
+[~,~,nt] = size(Diff.stim1.zscore);
 timeAxis = ((0:nt-1) / fs) * 1000;  % convert to ms
 
 if saveFigs && ~exist(saveDir,'dir')
@@ -75,24 +75,40 @@ if saveFigs && ~exist(saveDir,'dir')
 end
 
 for c = 1:nChan
-    fig = figure('Name',sprintf('Channel %s',channels{c}), ...
-                 'Units','normalized','Position',[0.05 0.05 0.85 0.85]);
-    
+    fig = figure('Name',sprintf('Channel %s',channels{c}));
+
     plotIndex = 0;
     for s = 1:numel(stimNames)
         for v = 1:numel(varNames)
             plotIndex = plotIndex + 1;
             subplot(numel(stimNames), numel(varNames), plotIndex)
             hold on
-            
+
             data = squeeze(Diff.(stimNames{s}).(varNames{v})(:,c,:)); % subj x time
             [m, lo, hi] = bootstrapOverSubjects(data, nBoot, alpha);
-            
+
             % Plot shaded CI
             fill([timeAxis fliplr(timeAxis)], [lo fliplr(hi)], ...
                 colors(s,:), 'FaceAlpha', 0.25, 'EdgeColor','none');
+
             plot(timeAxis, m, 'Color', colors(s,:), 'LineWidth', 1.5);
-            
+
+            % ---- significance detection ----
+            sigPos = lo > 0;   % CI entirely above zero
+            sigNeg = hi < 0;   % CI entirely below zero
+
+            % convert logical vectors to segments
+            ySig = min(lo) - 0.1*(max(hi)-min(lo)); % place significance line below plot
+
+            for t = 1:length(timeAxis)
+                if sigPos(t)
+                    plot(timeAxis(t), ySig, '.', 'Color', [1 0 0], 'MarkerSize', 10); % red
+                elseif sigNeg(t)
+                    plot(timeAxis(t), ySig, '.', 'Color', [0 0 1], 'MarkerSize', 10); % blue
+                end
+            end
+            % -------------------------------
+
             title(sprintf('%s – %s', stimNames{s}, varNames{v}), 'Interpreter','none');
             xlabel('Time (ms)');
             ylabel('Amplitude (a.u.)');
@@ -102,13 +118,13 @@ for c = 1:nChan
             hold off
         end
     end
-    
+
     sgtitle(sprintf('Channel: %s — Bootstrap mean ± 95%% CI', channels{c}));
-    
+
     if saveFigs
         saveas(fig, fullfile(saveDir, sprintf('Channel_%s.png', channels{c})));
     end
-    
+
     fprintf('Showing channel %s (%d/%d). Press any key for next...\n', ...
         channels{c}, c, nChan);
     pause;

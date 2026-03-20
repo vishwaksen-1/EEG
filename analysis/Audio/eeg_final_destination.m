@@ -1,13 +1,11 @@
-%% 
-% load `data` for set 1 or set 2, ACT or PASS 
-clear;
-clc;
-% f_name = 'final_pass.mat';
-% load(f_name);
+%%
+% load `data` for active  or passive
+% clear;
+% clc;
 
-
+C=data;
 fs=256;
-C=act;
+
 % e.g., set1_active_perrand / set1_passive_... / set2_...
 dataCol = 4;               % the column inside each subject-row that holds the 4-D array
 
@@ -31,22 +29,22 @@ Mstack = NaN(T,Ch,S,nS);
 for s = 1:nS
     Mstack(:,:,:,s) = mean_trials_all_subjects{s}; % [T x Ch x S x subj]
 end
-% for all subjects 
-% this averages all subjects 
+% for all subjects
+% this averages all subjects
 grand_mean_trials_per_stim = mean(Mstack, 4, 'omitnan'); % -> [T x Ch x S]
 
 % [T x Ch x Stimx Trial x Subj]
 A5 = stack_subjects_5D(C, dataCol);  % see local function below
-A5_aftr_baselinezeroing= baselinezeroing(A5,fs);
+A5_aftr_dcOffRm= dcOffsetFull(A5,fs);
 clear A5;
-A5=A5_aftr_baselinezeroing;
+A5=A5_aftr_dcOffRm;
 
 %% --- From A5 to seg_12 / seg_34 (no cells used) ---
 % A5: [T x Ch x Stim x Tr x Subj]
 
-[T, Ch, S, Tr, Subj] = size(A5); 
+[T, Ch, S, Tr, Subj] = size(A5);
 
-% Event window: baseline 0–500 ms -> onset at sample 129; stim length 3.6 s
+% Event window: baseline 0â€“500 ms -> onset at sample 129; stim length 3.6 s
 idx_on   = round(0.5*fs) + 1;                 % 129
 L_event  = round(3.6*fs);                      % 922
 i0       = idx_on;                             % 129
@@ -89,11 +87,11 @@ end
 % size(seg_34)  % -> [Subj  2  Tr  12  Ch  77]
 
 
-%% 
+%%
  [T,~,~,~,~] = size(A5);
 
-idxB = round(0.2*fs):round(0.5*fs);                               % 0–500 ms -> 1:128
-idxS = (round(0.5*fs)+1):min(round(4.1*fs)+1, T);     % 500–4100 ms -> 129:1051
+idxB = round(1):round(0.5*fs);                               % 0â€“500 ms -> 1:128
+idxS = (round(0.5*fs)+1):min(round(4.1*fs)+1, T);     % 500â€“4100 ms -> 129:1051
 idxO = (idxS(end)+1):T;                                % >4100 ms -> 1052:1664
 seg_12 = permute(seg_12, [4 6 5 2 3 1]);
 seg_34 = permute(seg_34, [4 6 5 2 3 1]);
@@ -102,18 +100,24 @@ token_34 = seg_34;
 
 
 stim12 = struct( ...
-  'baseline',   A5(idxB,:,[1 2],:,:), ...
-  'whole_stim', A5(idxS,:,[1 2],:,:), ...
-  'offset',     A5(idxO,:,[1 2],:,:), ...
+  'baseline',   A5(idxB,:,[1 2],:,:), ... % 0ms    to 500ms
+  'whole_stim', A5(idxS,:,[1 2],:,:), ... % 500ms  to 4100ms
+  'offset',     A5(idxO,:,[1 2],:,:), ... % 4100ms to 6500ms
+  'full_trial', A5(1:T, :,[1,2],:,:), ... % 0ms    to 6500ms
   'token_12',   token_12, ...
+  'channels',   ['AF3','F7','F3','FC5','T7','P7','O1','O2', ...
+                'P8','T8','FC6','F4','F8','AF4'],...
   'file',       f_name...
   );
 
 stim34 = struct( ...
-  'baseline',   A5(idxB,:,[3 4],:,:), ...
-  'whole_stim', A5(idxS,:,[3 4],:,:), ...
-  'offset',     A5(idxO,:,[3 4],:,:), ...
+  'baseline',   A5(idxB,:,[3 4],:,:), ... % 0ms    to 500ms
+  'whole_stim', A5(idxS,:,[3 4],:,:), ... % 500ms  to 4100ms
+  'offset',     A5(idxO,:,[3 4],:,:), ... % 4100ms to 6500ms
+  'full_trial', A5(1:T, :,[3,4],:,:), ... % 0ms    to 6500ms
   'token_34',   token_34, ...
+  'channels',   ['AF3','F7','F3','FC5','T7','P7','O1','O2', ...
+                'P8','T8','FC6','F4','F8','AF4'],...
   'file',       f_name......
   );
-%% 
+%%
